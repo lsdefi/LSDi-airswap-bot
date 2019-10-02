@@ -1,0 +1,19 @@
+module.exports = {
+  apps : [{
+    name: 'MP Airswap Bot',
+    script: 'src/index.js',
+    interpreter: '/home/market/.nvm/versions/node/v12.10.0/bin/node',
+    interpreter_args: '-r esm',
+
+    // Options reference: https://pm2.io/doc/en/runtime/reference/ecosystem-file/
+    instances: 1,
+    autorestart: true,
+    watch: true,
+    max_memory_restart: '1G',
+    env: {
+      NODE_ENV: 'development',
+      PRIVATE_KEY: 'YOUR PRIVATE KEY',
+      MARKET_CONTRACTS: '0xa2f59010040fb9fb3fb2af03a80276b21342d5fc,0x7d774b826c9967493c6c0e87d7824a6a885f1840'
+    }
+  }]
+};
