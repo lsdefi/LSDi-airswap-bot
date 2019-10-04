@@ -28,7 +28,8 @@
   "scripts": {
     "lint": "eslint src",
     "start": "npm run lint && node -r esm src/index.js",
-    "pm2": "pm2 start ecosystem.config.js"
+    "pm2": "pm2 start ecosystem.config.js",
+    "wallet": "node -r esm src/createWallet.js"
   },
   "dependencies": {
     "airswap.js": "^0.1.7",
