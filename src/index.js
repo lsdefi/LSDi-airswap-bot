@@ -49,7 +49,9 @@ const main = async () => {
     const { makerToken, takerAddress, takerToken } = params;
     const makerAddress = config.walletAddress;
 
-    const strategy = strategies.find(strat => strat.match(params));
+    const matchers = await Promise.all(strategies.map(strat => strat.match(params)));
+    const match = matchers.find(m => m[1]);
+    const strategy = match[0];
 
     if (!strategy) {
       console.log('requested order has no registered strategy');
@@ -96,7 +98,9 @@ const main = async () => {
     const { message, sender } = payload;
     const { id, params } = message;
 
-    const strategy = strategies.find(strat => strat.match(params));
+    const matchers = await Promise.all(strategies.map(strat => strat.match(params)));
+    const match = matchers.find(m => m[1]);
+    const strategy = match[0];
 
     if (!strategy) {
       console.log('requested quote has no registered strategy');
@@ -116,7 +120,9 @@ const main = async () => {
     const { message, sender } = payload;
     const { id, params } = message;
 
-    const strategy = strategies.find(strat => strat.match(params));
+    const matchers = await Promise.all(strategies.map(strat => strat.match(params)));
+    const match = matchers.find(m => m[1]);
+    const strategy = match[0];
 
     if (!strategy) {
       console.log('requested quote has no registered strategy');

@@ -128,12 +128,16 @@ export class MarketContractStrategy {
     const makerAddress = makerToken.toLowerCase();
     const takerAddress = takerToken.toLowerCase();
 
-    return (
+    if (
       makerAddress === longAddress
       || makerAddress === shortAddress
       || takerAddress === longAddress
       || takerAddress === shortAddress
-    );
+    ) {
+      return [this, true];
+    }
+
+    return [this, false];
   }
 
   async maxPurchase() {
