@@ -1,52 +1,29 @@
-import { ethers } from 'ethers';
-import fetch from 'node-fetch';
-
 import { getBalance } from './utils/getBalance.js';
-import { marketContract } from './abi/marketContract.js';
-import { validateHexString } from './utils/validateHexString.js';
+import { MarketContractPricer } from './MarketContractPricer.js';
+import { MarketContractWrapper } from './MarketContractWrapper.js';
+import { SanityChecker } from './SanityChecker.js';
 import { wrapAsBigNumber } from './utils/wrapAsBigNumber.js';
-
-const normalizeCoincapData = (payload) => {
-  console.log('COINCAP PAYLOAD', payload);
-  const { data, timestamp } = payload;
-  const { priceUsd, rateUsd, symbol } = data;
-
-  return {
-    symbol,
-    timestamp,
-
-    price: rateUsd || priceUsd,
-  };
-};
 
 export class MarketContractStrategy {
   constructor(address, config) {
     this.address = address.toLowerCase();
     this.config = config;
+    this.contract = new MarketContractWrapper(this);
     this.marketContracts = {};
-    this.spreadBasis = 0.001;
-  }
-
-  async applySpread(price, side) {
-    const spread = await this.spread(price);
-
-    if (side === 'buy') {
-      return price.minus(spread);
-    }
-
-    return price.plus(spread);
+    this.price = new MarketContractPricer(this);
+    this.sanity = new SanityChecker(this);
   }
 
   async enableTokens() {
-    const { longAddress, shortAddress } = await this.getPositionTokenAddresses();
+    const { longAddress, shortAddress } = await this.contract.tokenAddresses();
     await this.config.enableToken(longAddress);
     await this.config.enableToken(shortAddress);
     return true;
   }
 
   async getAmounts(makerAmount, makerToken, takerAmount, takerToken) {
-    const makerPrice = await this.getPrice(makerToken, 'sell');
-    const takerPrice = await this.getPrice(takerToken, 'buy');
+    const makerPrice = await this.price.get(makerToken, 'maker');
+    const takerPrice = await this.price.get(takerToken, 'taker');
     let makerAmountD;
     let takerAmountD;
 
@@ -66,35 +43,13 @@ export class MarketContractStrategy {
     return { makerAmountD, makerAmountI, makerPrice, takerAmountD, takerAmountI,  takerPrice };
   }
 
-  async getPositionTokenAddresses() {
-    const { longPositionTokenAddress, shortPositionTokenAddress } = await this.loadContract();
-
-    return {
-      longAddress: longPositionTokenAddress.toLowerCase(),
-      shortAddress: shortPositionTokenAddress.toLowerCase(),
-    };
-  }
-
-  async getPrice(address, side) {
-    const { longAddress, shortAddress } = await this.getPositionTokenAddresses();
-
-    if (address === longAddress) {
-      return this.longPrice(side);
-    }
-
-    if (address === shortAddress) {
-      return this.shortPrice(side);
-    }
-
-    return this.config.collateralPrice();
-  }
-
   async getQuote(params) {
     const { makerAmount, makerToken, takerAmount, takerToken } = params;
     const makerAddress = this.config.walletAddress;
 
     const amounts = await this.getAmounts(makerAmount, makerToken, takerAmount, takerToken);
     console.log('AMOUNTS', amounts);
+
     let { makerAmountD, takerAmountD } = amounts;
     const { makerPrice, takerPrice } = amounts;
 
@@ -127,8 +82,8 @@ export class MarketContractStrategy {
   async getMaxQuote(params) {
     const { makerToken, takerToken } = params;
     const makerAddress = this.config.walletAddress;
-    const makerPrice = await this.getPrice(makerToken, 'sell');
-    const takerPrice = await this.getPrice(takerToken, 'buy');
+    const makerPrice = await this.price.get(makerToken, 'maker');
+    const takerPrice = await this.price.get(takerToken, 'taker');
     let makerAmountD;
     let takerAmountD;
 
@@ -156,7 +111,7 @@ export class MarketContractStrategy {
 
     const base = { role, supportedMethods };
     const { collateralAddress } = this.config;
-    const { longAddress, shortAddress } = await this.getPositionTokenAddresses();
+    const { longAddress, shortAddress } = await this.contract.tokenAddresses();
 
     const combinations = [
       { makerToken: collateralAddress, takerToken: longAddress },
@@ -168,62 +123,8 @@ export class MarketContractStrategy {
     return combinations.map(combo => Object.assign({}, base, combo));
   }
 
-  async loadContract() {
-    if (this.contract) {
-      return this.contract;
-    }
-
-    const { address } = this;
-
-    console.log('Loading Market Contract', address);
-    validateHexString(address);
-    const contract = new ethers.Contract(address, marketContract, this.config.wallet);
-
-    const [
-      longPositionTokenAddress,
-      shortPositionTokenAddress,
-      priceCap,
-      priceFloor,
-      priceDecimalPlaces,
-      oracleURL,
-      oracleStatistic,
-    ] = await Promise.all([
-      contract.LONG_POSITION_TOKEN(),
-      contract.SHORT_POSITION_TOKEN(),
-      wrapAsBigNumber(contract.PRICE_CAP()),
-      wrapAsBigNumber(contract.PRICE_FLOOR()),
-      wrapAsBigNumber(contract.PRICE_DECIMAL_PLACES()),
-      contract.ORACLE_URL(),
-      contract.ORACLE_STATISTIC(),
-    ]);
-
-    this.contract = {
-      address,
-      longPositionTokenAddress,
-      shortPositionTokenAddress,
-      priceCap,
-      priceFloor,
-      priceDecimalPlaces,
-      oracleURL,
-      oracleStatistic,
-    };
-
-    console.log('CONTRACT', this.contract);
-
-    return this.contract;
-  }
-
-  async longPrice(side) {
-    const { priceDecimalPlaces, priceFloor } = await this.loadContract();
-    const spotPrice = await this.spotPrice();
-    const floor = await wrapAsBigNumber(priceFloor);
-    const price = spotPrice.minus(floor.dividedBy(10 ** priceDecimalPlaces));
-
-    return this.applySpread(price, side);
-  }
-
   async match({ makerToken, takerToken }) {
-    const { longAddress, shortAddress } = await this.getPositionTokenAddresses();
+    const { longAddress, shortAddress } = await this.contract.tokenAddresses();
     const makerAddress = makerToken.toLowerCase();
     const takerAddress = takerToken.toLowerCase();
 
@@ -236,60 +137,17 @@ export class MarketContractStrategy {
   }
 
   async maxPurchase() {
-    const contract = await this.loadContract();
-    const { priceCap, priceDecimalPlaces, priceFloor } = contract;
+    const spread = await this.contract.bandSpread();
 
-    const ceiling = await wrapAsBigNumber(priceCap);
-    const floor = await wrapAsBigNumber(priceFloor);
-
-    const spread = ceiling.minus(floor).dividedBy(10 ** priceDecimalPlaces);
-
-    console.log('SPREAD IS', ceiling.toFixed(), ' - ', floor.toFixed(), spread.toFixed());
-
-    if (spread.isLessThan(100)) {
-      return wrapAsBigNumber(1);
+    if (spread.isLessThan(150)) {
+      return wrapAsBigNumber(2.5);
     }
 
-    if (spread.isLessThan(1000)) {
-      return wrapAsBigNumber(0.1);
-    }
-
-    return wrapAsBigNumber(0.01);
+    return wrapAsBigNumber(0.1);
   }
 
   async maxSale() {
     return this.maxPurchase();
-  }
-
-  async shortPrice(side) {
-    const { priceCap, priceDecimalPlaces } = await this.loadContract();
-    const spotPrice = await this.spotPrice();
-    const ceiling = await wrapAsBigNumber(priceCap);
-    const price = ceiling.multipliedBy(10 ** priceDecimalPlaces).minus(spotPrice);
-
-    return this.applySpread(price, side);
-  }
-
-  async shortToken() {
-    const contract = await this.loadContract();
-    return this.config.erc20Contract(contract.shortPositionTokenAddress);
-  }
-
-  async spotPrice() {
-    const contract = await this.loadContract();
-
-    const response = await fetch(contract.oracleURL);
-    const priceData = await response.json();
-    const { price } = normalizeCoincapData(priceData);
-
-    // NOTE: This currently only works with coincap feeds and needs to be updated
-    // when price strategies are a thing at the contract level.
-    return wrapAsBigNumber(price);
-  }
-
-  async spread(price) {
-    // NOTE: Make this smarter than 1 basis point later :D
-    return price.multipliedBy(this.spreadBasis);
   }
 
   async validateBalances({ makerAmount, makerToken, takerAddress, takerAmount, takerToken }) {

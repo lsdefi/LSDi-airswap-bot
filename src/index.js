@@ -130,6 +130,8 @@ const main = async () => {
     router.call(sender, response);
     console.log('sent max quote', response);
   };
+
+  console.log('Ready to make the markets');
 };
 
 main();
