@@ -11,4 +11,4 @@ export const normalizeCoincapData = (payload) => {
   };
 };
 
-export default normalizeCoincapData
+export default normalizeCoincapData;

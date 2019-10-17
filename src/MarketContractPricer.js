@@ -1,13 +1,13 @@
 import BigNumber from 'bignumber.js';
 import fetch from 'node-fetch';
 
-import { normalizeCoincapData } from './utils/normalizeCoincapData';
+import { normalizeCompoundData } from './utils/normalizeCompoundData';
 import { wrapAsBigNumber } from './utils/wrapAsBigNumber';
 
 export class MarketContractPricer {
   constructor(strategy) {
-    this.minSpread = new BigNumber(0);
-    this.spreadWidth = new BigNumber(0.0075);
+    this.minSpread = new BigNumber(0.75);
+    this.spreadWidth = new BigNumber(0);
     this.strategy = strategy;
   }
 
@@ -91,7 +91,7 @@ export class MarketContractPricer {
 
     const response = await fetch(oracleURL);
     const priceData = await response.json();
-    const { price } = normalizeCoincapData(priceData);
+    const { price } = normalizeCompoundData(priceData);
     const spot = await wrapAsBigNumber(price);
 
     await this.sanity.isNumeric(spot);
