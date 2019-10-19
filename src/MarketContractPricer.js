@@ -87,7 +87,8 @@ export class MarketContractPricer {
   }
 
   async spotPrice() {
-    const oracleURL = await this.contract.oracleURL();
+    console.log('Trying to get spot price from Compound');
+    const oracleURL = 'https://api.compound.finance/api/v2/ctoken?addresses[]=0xf5dce57282a584d2746faf1593d3121fcac444dc';
 
     try {
       const response = await fetch(oracleURL);
@@ -100,7 +101,7 @@ export class MarketContractPricer {
       return spot;
     } catch (e) {
       console.log('CAUGHT ERROR', e);
-      return this.spotPrice;
+      return await this.spotPrice();
     }
   }
 }

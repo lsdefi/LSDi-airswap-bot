@@ -88,10 +88,10 @@ export class MarketContractStrategy {
     let takerAmountD;
 
     if (this.config.isCollateralToken(makerToken)) {
-      takerAmountD = this.maxPurchase();
+      takerAmountD = await this.maxPurchase();
       makerAmountD = takerPrice.multipliedBy(takerAmountD).dividedBy(makerPrice);
     } else {
-      makerAmountD = this.maxSale();
+      makerAmountD = await this.maxSale();
       takerAmountD = makerPrice.multipliedBy(makerAmountD).dividedBy(takerPrice);
     }
 
