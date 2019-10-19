@@ -1,6 +1,6 @@
 import BigNumber from 'bignumber.js';
 
-export const normalizeCoincapData = (payload) => {
+export const normalizeCompoundData = (payload) => {
   console.log('COMPOUND PAYLOAD', payload);
   const { cToken } = payload;
 

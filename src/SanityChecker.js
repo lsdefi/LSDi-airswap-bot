@@ -38,7 +38,7 @@ export class SanityChecker {
 
     if (num.isGreaterThan(bandSpread)) {
       throw new ExceedsBandError(
-        `The quote (${num.toFixed}) would exceed the maximum token value (${bandSpread.toFixed})`
+        `The quote (${num.toFixed}) would exceed the maximum token value (${bandSpread.toFixed})`,
       );
     }
   }
