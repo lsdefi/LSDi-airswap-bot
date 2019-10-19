@@ -89,14 +89,19 @@ export class MarketContractPricer {
   async spotPrice() {
     const oracleURL = await this.contract.oracleURL();
 
-    const response = await fetch(oracleURL);
-    const priceData = await response.json();
-    const { price } = normalizeCompoundData(priceData);
-    const spot = await wrapAsBigNumber(price);
+    try {
+      const response = await fetch(oracleURL);
+      const priceData = await response.json();
+      const { price } = normalizeCompoundData(priceData);
+      const spot = await wrapAsBigNumber(price);
 
-    await this.sanity.isNumeric(spot);
+      await this.sanity.isNumeric(spot);
 
-    return spot;
+      return spot;
+    } catch (e) {
+      console.log('CAUGHT ERROR', e);
+      return this.spotPrice;
+    }
   }
 }
 
