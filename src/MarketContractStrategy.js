@@ -179,7 +179,7 @@ export class MarketContractStrategy {
         makerBalance.toFixed(),
       );
       return {
-        error: 'Sorry but we\ve temporarily run low on supply and cannot fill your order.',
+        error: 'Sorry but we\'ve temporarily run low on supply and cannot fill your order.',
       };
     }
 
