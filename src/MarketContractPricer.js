@@ -101,7 +101,7 @@ export class MarketContractPricer {
       return spot;
     } catch (e) {
       console.log('CAUGHT ERROR', e);
-      return await this.spotPrice();
+      return this.spotPrice();
     }
   }
 }

@@ -42,6 +42,16 @@ const main = async () => {
 
   const { jsonrpc } = config;
 
+  const defaultError = 'We\'re sorry. The maker is having a bad trip and can\'t complete your request.';
+
+  const respondWithError = (sender, id, error = defaultError) => {
+    const result = { error };
+    const response = { id, jsonrpc, result };
+
+    // Send the order
+    router.call(sender, response);
+  };
+
   router.RPC_METHOD_ACTIONS.getOrder = async (payload) => {
     console.log('getOrder called with', payload);
     const { message, sender } = payload;
@@ -55,13 +65,15 @@ const main = async () => {
 
     if (!strategy) {
       console.log('requested order has no registered strategy');
+      respondWithError(sender, id);
       return;
     }
 
     const pricesAndAmounts = await strategy.validateBalances(params);
     console.log('PRICES AND AMOUNTS', pricesAndAmounts);
 
-    if (!pricesAndAmounts) {
+    if (pricesAndAmounts.error) {
+      respondWithError(sender, id, pricesAndAmounts.error);
       return;
     }
 
@@ -85,12 +97,17 @@ const main = async () => {
 
     console.log('ORDER', order);
 
-    const result = await signOrder(order, config);
-    const response = { id, jsonrpc, result };
+    try {
+      const result = await signOrder(order, config);
+      const response = { id, jsonrpc, result };
 
-    // Send the order
-    router.call(sender, response);
-    console.log('sent order', response);
+      // Send the order
+      router.call(sender, response);
+      console.log('sent order', response);
+    } catch (e) {
+      console.error(e);
+      respondWithError(sender, id);
+    }
   };
 
   router.RPC_METHOD_ACTIONS.getQuote = async (payload) => {
@@ -104,15 +121,21 @@ const main = async () => {
 
     if (!strategy) {
       console.log('requested quote has no registered strategy');
+      respondWithError(sender, id);
       return;
     }
 
-    const result = await strategy.getQuote(params);
-    const response = { id, jsonrpc, result };
+    try {
+      const result = await strategy.getQuote(params);
+      const response = { id, jsonrpc, result };
 
-    // Send the quote
-    router.call(sender, response);
-    console.log('sent quote', response);
+      // Send the quote
+      router.call(sender, response);
+      console.log('sent quote', response);
+    } catch (e) {
+      console.error(e);
+      respondWithError(sender, id);
+    }
   };
 
   router.RPC_METHOD_ACTIONS.getMaxQuote = async (payload) => {
@@ -126,15 +149,21 @@ const main = async () => {
 
     if (!strategy) {
       console.log('requested quote has no registered strategy');
+      respondWithError(sender, id);
       return;
     }
 
-    const result = await strategy.getMaxQuote(params);
-    const response = { id, jsonrpc, result };
+    try {
+      const result = await strategy.getMaxQuote(params);
+      const response = { id, jsonrpc, result };
 
-    // Send the quote
-    router.call(sender, response);
-    console.log('sent max quote', response);
+      // Send the quote
+      router.call(sender, response);
+      console.log('sent max quote', response);
+    } catch (e) {
+      console.error(e);
+      respondWithError(sender, id);
+    }
   };
 
   console.log('Ready to make the markets');
