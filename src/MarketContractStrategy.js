@@ -194,7 +194,7 @@ export class MarketContractStrategy {
         '<',
         takerAmountI.toFixed(),
       );
-      return { error: 'Sorry but you\'re balance is to low to place that order.' };
+      return { error: 'Sorry but your balance is to low to place that order.' };
     }
 
     return {
